@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+// import { useState } from "react"; // 未使用のため削除
 
 interface EmotionState {
   happiness: number;

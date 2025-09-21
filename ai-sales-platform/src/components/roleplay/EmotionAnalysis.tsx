@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from "recharts";
 
 interface EmotionData {
   timestamp: Date;

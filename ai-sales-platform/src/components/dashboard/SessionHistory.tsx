@@ -30,7 +30,7 @@ export function SessionHistory() {
 
         try {
           data = JSON.parse(text);
-        } catch (parseError) {
+        } catch {
           console.error("Failed to parse JSON:", text.substring(0, 100));
           throw new Error("Invalid JSON response");
         }

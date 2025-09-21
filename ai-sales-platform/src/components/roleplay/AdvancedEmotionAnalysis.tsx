@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
+import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 
 interface NonverbalCues {
   voiceTone: {
@@ -47,7 +47,7 @@ interface AdvancedEmotionAnalysisProps {
 export function AdvancedEmotionAnalysis({ isActive }: AdvancedEmotionAnalysisProps) {
   const [currentCues, setCurrentCues] = useState<NonverbalCues | null>(null);
   const [keyMoments, setKeyMoments] = useState<KeyMoment[]>([]);
-  const [customerPersonality, setCustomerPersonality] = useState({
+  const [customerPersonality] = useState({
     analytical: 8,
     relationship: 5,
     urgency: 6,

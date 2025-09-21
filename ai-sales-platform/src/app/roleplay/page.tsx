@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ScenarioSelection } from "@/components/roleplay/ScenarioSelection";
 import { StaticVRMAvatar } from "@/components/roleplay/StaticVRMAvatar";
-import { Mic, MicOff, Camera, CameraOff, Pause, CheckCircle, Loader2 } from "lucide-react";
+import { Mic, MicOff, Pause, CheckCircle, Loader2 } from "lucide-react";
 import Papa from "papaparse";
 import { DifficultyLevel } from "@prisma/client";
 
@@ -42,8 +42,7 @@ export default function RoleplayPage() {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [conversations, setConversations] = useState<ConversationEntry[]>([]);
   const [isMicOn, setIsMicOn] = useState(false);
-  const [isCameraOn, setIsCameraOn] = useState(false);
-  const [currentEmotion, setCurrentEmotion] = useState({
+  const [currentEmotion] = useState({
     happiness: 6,
     sadness: 2,
     anger: 1,
@@ -52,9 +51,6 @@ export default function RoleplayPage() {
     neutral: 5
   });
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
-  const [cameraError, setCameraError] = useState<string | null>(null);
 
   // 会話モック関連の状態
   const [scenarioData, setScenarioData] = useState<ScenarioData[]>([]);
@@ -70,8 +66,13 @@ export default function RoleplayPage() {
     console.log('scenarioData state changed:', scenarioData);
   }, [scenarioData]);
 
-  const handleScenarioSelect = (scenario: Scenario) => {
+  const handleScenarioSelect = async (scenario: Scenario) => {
     setSelectedScenario(scenario);
+
+    // シナリオ選択後、少し遅延してセッションを自動開始
+    setTimeout(async () => {
+      await handleSessionStart();
+    }, 500);
   };
 
   // CSVシナリオを読み込む
@@ -97,7 +98,7 @@ export default function RoleplayPage() {
           setScenarioData(results.data);
           console.log('setScenarioData called with:', results.data);
         },
-        error: (error) => {
+        error: (error: Error) => {
           console.error('CSV parsing error:', error);
         }
       });
@@ -110,88 +111,19 @@ export default function RoleplayPage() {
     console.log('Session start called');
     setIsSessionActive(true);
 
-    // セッション開始時に必ずカメラをON
-    setIsCameraOn(true);
-    try {
-      await startCamera();
-    } catch (error) {
-      console.error('Failed to start camera during session start:', error);
-    }
+    // 会話ログをクリア
+    setConversations([]);
+    setCurrentScenarioIndex(0);
+    setConversationStep('ready');
 
     // CSVシナリオを読み込み
     console.log('About to load scenario...');
     await loadScenario();
     console.log('Scenario loading completed');
 
-    // 会話ログをクリア
-    setConversations([]);
-    setCurrentScenarioIndex(0);
-    setConversationStep('ready');
     console.log('Session initialization completed');
   };
 
-  // カメラアクセス処理
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          facingMode: 'user'
-        },
-        audio: false
-      });
-
-      setCameraStream(stream);
-      setCameraError(null);
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
-    } catch (error) {
-      console.error('Camera access error:', error);
-      setCameraError('カメラにアクセスできません');
-      setIsCameraOn(false);
-    }
-  };
-
-  const stopCamera = () => {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop());
-      setCameraStream(null);
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  };
-
-  // カメラON/OFF切り替え
-  const toggleCamera = () => {
-    if (isCameraOn) {
-      stopCamera();
-      setIsCameraOn(false);
-    } else {
-      startCamera();
-      setIsCameraOn(true);
-    }
-  };
-
-  // クリーンアップのみ
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, []);
-
-  // isCameraOnが変更された時の処理
-  useEffect(() => {
-    if (isCameraOn && !cameraStream) {
-      startCamera();
-    } else if (!isCameraOn && cameraStream) {
-      stopCamera();
-    }
-  }, [isCameraOn]);
 
   const handleSessionPause = () => {
     setIsSessionActive(false);
@@ -203,7 +135,7 @@ export default function RoleplayPage() {
   };
 
   // Enterキーが押されたときの処理
-  const handleEnterPress = () => {
+  const handleEnterPress = useCallback(() => {
     console.log('handleEnterPress called', {
       isSessionActive,
       currentScenarioIndex,
@@ -278,7 +210,7 @@ export default function RoleplayPage() {
         setConversationStep('ready'); // 次のサイクルに戻る
       }, delay);
     }
-  };
+  }, [isSessionActive, currentScenarioIndex, scenarioData, conversationStep, setConversations, setCurrentScenarioIndex, setConversationStep, setIsLoading, setIsSpeaking]);
 
   // Enterキー押下で会話を進める
   useEffect(() => {
@@ -300,18 +232,14 @@ export default function RoleplayPage() {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [isSessionActive, conversationStep, isLoading, scenarioData, currentScenarioIndex]);
+  }, [isSessionActive, conversationStep, isLoading, handleEnterPress]);
 
-  const handleBackToSelection = () => {
-    setSelectedScenario(null);
-    setIsSessionActive(false);
-  };
 
   if (!selectedScenario) {
     return (
       <div className="container mx-auto p-6">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">AI商談ロールプレイ</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">AI Roleplay for CAC Identity</h1>
           <p className="text-gray-600">
             リアルなビジネスシーンでAIと練習し、感情分析を通じて商談スキルを向上させましょう
           </p>
@@ -399,63 +327,18 @@ export default function RoleplayPage() {
             />
           </div>
 
-          {/* User Camera Window (Small) */}
-          <div className="absolute top-4 right-4 w-40 h-28 bg-gray-900 rounded-lg overflow-hidden border-2 border-white shadow-lg">
-            {cameraStream && !cameraError ? (
-              <div className="relative w-full h-full">
-                <video
-                  ref={videoRef}
-                  className="w-full h-full object-cover"
-                  autoPlay
-                  playsInline
-                  muted
-                />
-                <div className="absolute bottom-1 left-1 bg-black/70 text-white px-1 py-0.5 rounded text-xs">
-                  <Camera className="w-3 h-3 inline mr-1" />
-                  LIVE
-                </div>
-                <button
-                  onClick={toggleCamera}
-                  className="absolute top-1 right-1 bg-red-500/80 text-white p-1 rounded text-xs hover:bg-red-600/80"
-                >
-                  <CameraOff className="w-3 h-3" />
-                </button>
-              </div>
-            ) : cameraError ? (
-              <div className="w-full h-full bg-red-800 flex flex-col items-center justify-center text-white text-xs p-2">
-                <CameraOff className="w-6 h-6 mb-1" />
-                <span className="text-center">{cameraError}</span>
-                <button
-                  onClick={startCamera}
-                  className="mt-1 bg-red-600 px-2 py-1 rounded text-xs hover:bg-red-700"
-                >
-                  再試行
-                </button>
-              </div>
-            ) : isCameraOn && !cameraStream ? (
-              <div className="w-full h-full bg-blue-800 flex flex-col items-center justify-center text-white text-xs">
-                <Camera className="w-6 h-6 mb-1 animate-pulse" />
-                <span>カメラ起動中...</span>
-              </div>
-            ) : (
-              <div className="w-full h-full bg-gray-600 flex flex-col items-center justify-center text-white text-xs">
-                <CameraOff className="w-6 h-6 mb-1" />
-                <span>カメラOFF</span>
-                <button
-                  onClick={() => {
-                    setIsCameraOn(true);
-                    startCamera();
-                  }}
-                  className="mt-1 bg-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-700"
-                >
-                  ONにする
-                </button>
-              </div>
-            )}
-          </div>
 
           {/* Control Buttons (Top Right) */}
-          <div className="absolute top-4 right-48 flex space-x-2">
+          <div className="absolute top-4 right-4 flex space-x-2">
+            {/* マイクコントロール */}
+            <button
+              onClick={() => setIsMicOn(!isMicOn)}
+              className={`p-3 rounded-full transition-colors ${
+                isMicOn ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-600'
+              }`}
+            >
+              {isMicOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+            </button>
             <button
               onClick={handleSessionPause}
               className="flex items-center space-x-1 px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
@@ -474,49 +357,6 @@ export default function RoleplayPage() {
         </div>
       </div>
 
-      {/* Bottom Control Area - Fixed Height */}
-      <div className="bg-white border-t p-4 flex-shrink-0">
-        {!isSessionActive ? (
-          <div className="text-center">
-            <button
-              onClick={handleSessionStart}
-              className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              セッションを開始
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center space-x-6">
-            {/* マイクコントロール */}
-            <button
-              onClick={() => setIsMicOn(!isMicOn)}
-              className={`p-3 rounded-full transition-colors ${
-                isMicOn ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-600'
-              }`}
-            >
-              {isMicOn ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
-            </button>
-
-            {/* 状態表示 */}
-            <div className="text-center">
-              {isLoading ? (
-                <div className={`flex items-center space-x-2 ${conversationStep === 'recording' ? 'text-red-600' : 'text-blue-600'}`}>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span className="font-medium">
-                    {conversationStep === 'recording' ? '音声記録中...' : '応答生成中...'}
-                  </span>
-                </div>
-              ) : currentScenarioIndex >= scenarioData.length ? (
-                <div className="text-gray-600 font-medium">シナリオ完了</div>
-              ) : (
-                <div className="text-sm text-gray-500">
-                  {scenarioData.length > 0 && `${currentScenarioIndex} / ${scenarioData.length}`}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

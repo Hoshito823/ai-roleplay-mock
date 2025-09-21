@@ -30,12 +30,12 @@ export function VRMAvatar({
   vrmUrl = "character.vrm"
 }: VRMAvatarProps) {
   const mountRef = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<THREE.Scene>();
-  const rendererRef = useRef<THREE.WebGLRenderer>();
-  const cameraRef = useRef<THREE.PerspectiveCamera>();
-  const vrmRef = useRef<VRM>();
-  const animationIdRef = useRef<number>();
-  const testCubeRef = useRef<THREE.Mesh>();
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const vrmRef = useRef<VRM | null>(null);
+  const animationIdRef = useRef<number | null>(null);
+  const testCubeRef = useRef<THREE.Mesh | null>(null);
 
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -77,7 +77,7 @@ export function VRMAvatar({
     // 既存のアニメーションがあればクリア
     if (animationIdRef.current) {
       cancelAnimationFrame(animationIdRef.current);
-      animationIdRef.current = undefined;
+      animationIdRef.current = null;
     }
 
     console.log("Initializing Three.js scene");
@@ -207,9 +207,10 @@ export function VRMAvatar({
       if (animationIdRef.current) {
         cancelAnimationFrame(animationIdRef.current);
       }
-      if (rendererRef.current && mountRef.current && rendererRef.current.domElement && mountRef.current.contains(rendererRef.current.domElement)) {
+      const currentMount = mountRef.current;
+      if (rendererRef.current && currentMount && rendererRef.current.domElement && currentMount.contains(rendererRef.current.domElement)) {
         try {
-          mountRef.current.removeChild(rendererRef.current.domElement);
+          currentMount.removeChild(rendererRef.current.domElement);
         } catch (error) {
           console.warn("Error removing renderer element:", error);
         }
@@ -335,7 +336,8 @@ export function VRMAvatar({
         const percentage = (progress.loaded / progress.total) * 100;
         setLoadingProgress(percentage);
       },
-      (error) => {
+      (err: unknown) => {
+        const error = err as Error;
         console.error("VRM loading error:", error);
         console.error("Error details:", error.message || error);
         setError(`VRMファイルの読み込みに失敗しました: ${error.message || 'Unknown error'}`);
@@ -360,7 +362,7 @@ export function VRMAvatar({
 
     try {
       vrmRef.current.expressionManager.setValue(shapeName, value);
-    } catch (error) {
+    } catch {
       // BlendShapeが存在しない場合は無視
     }
   };
@@ -398,7 +400,7 @@ export function VRMAvatar({
       updateBlendShape("ih", 0);
       updateBlendShape("ou", 0);
     }
-  }, [currentEmotion, isSpeaking, isLoaded]);
+  }, [currentEmotion, isSpeaking, isLoaded, blendShapeMap]);
 
   // ウィンドウリサイズ対応
   useEffect(() => {
