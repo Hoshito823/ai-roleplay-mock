@@ -509,7 +509,7 @@ export default function RoleplayResultPage() {
                               <div>
                                 <h4 className="font-medium text-gray-700 mb-2">発話エビデンス</h4>
                                 <div className="bg-gray-50 p-3 rounded border-l-4 border-blue-500">
-                                  <p className="text-gray-700 italic">"{criterion.evidence}"</p>
+                                  <p className="text-gray-700 italic">&quot;{criterion.evidence}&quot;</p>
                                 </div>
                               </div>
                             )}
