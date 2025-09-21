@@ -4,7 +4,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ScenarioSelection } from "@/components/roleplay/ScenarioSelection";
 import { StaticVRMAvatar } from "@/components/roleplay/StaticVRMAvatar";
-import { Mic, MicOff, Pause, CheckCircle, Loader2 } from "lucide-react";
+import CameraBox from "@/components/CameraBox";
+import { Mic, MicOff, Pause, CheckCircle, Loader2, Home, BarChart3 } from "lucide-react";
 import Papa from "papaparse";
 import { DifficultyLevel } from "@prisma/client";
 
@@ -41,7 +42,7 @@ export default function RoleplayPage() {
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [conversations, setConversations] = useState<ConversationEntry[]>([]);
-  const [isMicOn, setIsMicOn] = useState(false);
+  const [isMicOn, setIsMicOn] = useState(true);
   const [currentEmotion] = useState({
     happiness: 6,
     sadness: 2,
@@ -237,20 +238,81 @@ export default function RoleplayPage() {
 
   if (!selectedScenario) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">AI Roleplay for CAC Identity</h1>
-          <p className="text-gray-600">
-            リアルなビジネスシーンでAIと練習し、感情分析を通じて商談スキルを向上させましょう
-          </p>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header Navigation */}
+        <header className="bg-white shadow-sm border-b">
+          <div className="container mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <h1 className="text-2xl font-bold text-gray-900">AI Sales Platform</h1>
+                <nav className="hidden md:flex space-x-8">
+                  <button
+                    onClick={() => router.push('/')}
+                    className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"
+                  >
+                    <Home className="w-4 h-4" />
+                    <span>ホーム</span>
+                  </button>
+                  <button
+                    onClick={() => router.push('/dashboard')}
+                    className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    <span>ダッシュボード</span>
+                  </button>
+                  <button className="text-blue-600 font-medium">ロールプレイ</button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="container mx-auto p-6">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">AI Roleplay for CAC Identity</h1>
+            <p className="text-gray-600">
+              リアルなビジネスシーンでAIと練習し、感情分析を通じて商談スキルを向上させましょう
+            </p>
+          </div>
+          <ScenarioSelection onScenarioSelect={handleScenarioSelect} />
         </div>
-        <ScenarioSelection onScenarioSelect={handleScenarioSelect} />
       </div>
     );
   }
 
   return (
     <div className="h-screen bg-white flex flex-col overflow-hidden">
+      {/* Header Navigation */}
+      <header className="bg-white shadow-sm border-b flex-shrink-0">
+        <div className="container mx-auto px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <h1 className="text-xl font-bold text-gray-900">AI Sales Platform</h1>
+              <nav className="hidden md:flex space-x-6">
+                <button
+                  onClick={() => router.push('/')}
+                  className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 text-sm"
+                >
+                  <Home className="w-4 h-4" />
+                  <span>ホーム</span>
+                </button>
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 text-sm"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  <span>ダッシュボード</span>
+                </button>
+                <button className="text-blue-600 font-medium text-sm">ロールプレイ</button>
+              </nav>
+            </div>
+            <div className="text-sm text-gray-600">
+              {selectedScenario.title}
+            </div>
+          </div>
+        </div>
+      </header>
+
       {/* Main Content Area */}
       <div className="flex-1 flex min-h-0">
         {/* Left Panel - Conversation Log */}
@@ -328,8 +390,11 @@ export default function RoleplayPage() {
           </div>
 
 
+          {/* Camera Box */}
+          <CameraBox />
+
           {/* Control Buttons (Top Right) */}
-          <div className="absolute top-4 right-4 flex space-x-2">
+          <div className="absolute top-4 right-56 flex space-x-2">
             {/* マイクコントロール */}
             <button
               onClick={() => setIsMicOn(!isMicOn)}
