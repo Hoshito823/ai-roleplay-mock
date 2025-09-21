@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { convertJapaneseToDifficultyEnum } from '@/utils/difficulty'
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,11 +8,13 @@ export async function GET(request: NextRequest) {
     const industry = searchParams.get('industry')
     const difficulty = searchParams.get('difficulty')
 
+    const difficultyEnum = difficulty ? convertJapaneseToDifficultyEnum(difficulty) : null
+
     const scenarios = await prisma.scenario.findMany({
       where: {
         isActive: true,
         ...(industry && { industry }),
-        ...(difficulty && { difficulty: difficulty as "初級" | "中級" | "上級" })
+        ...(difficultyEnum && { difficulty: difficultyEnum })
       },
       orderBy: {
         createdAt: 'desc'
@@ -37,12 +40,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const difficultyEnum = convertJapaneseToDifficultyEnum(difficulty)
+    if (!difficultyEnum) {
+      return NextResponse.json(
+        { error: 'Invalid difficulty level' },
+        { status: 400 }
+      )
+    }
+
     const scenario = await prisma.scenario.create({
       data: {
         title,
         description,
         industry,
-        difficulty
+        difficulty: difficultyEnum
       }
     })
 

@@ -15,7 +15,6 @@ import {
   Users,
   Target,
   Heart,
-  Volume2,
   Save
 } from 'lucide-react';
 

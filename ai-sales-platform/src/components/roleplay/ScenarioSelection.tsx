@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { DifficultyLevel } from "@prisma/client";
+import { convertDifficultyEnumToJapanese } from "@/utils/difficulty";
 
 interface Scenario {
   id: string;
   title: string;
   description: string;
   industry: string;
-  difficulty: "初級" | "中級" | "上級";
+  difficulty: DifficultyLevel;
   type: string;
   character: {
     name: string;
@@ -28,7 +30,7 @@ const SCENARIOS: Scenario[] = [
     title: "製造業企業へのDX提案",
     description: "中小製造業の生産管理担当者に対して、業務効率化と在庫管理の改善を目的としたクラウドソリューションを提案するシナリオ",
     industry: "製造",
-    difficulty: "中級",
+    difficulty: DifficultyLevel.INTERMEDIATE,
     type: "新規開拓",
     character: {
       name: "田中 昭仁",
@@ -43,7 +45,7 @@ const SCENARIOS: Scenario[] = [
     title: "新規IT企業への提案",
     description: "成長中のスタートアップ企業に新しいソフトウェアソリューションを提案するシナリオ",
     industry: "IT",
-    difficulty: "初級",
+    difficulty: DifficultyLevel.BEGINNER,
     type: "新規開拓",
     character: {
       name: "田中 雄介",
@@ -58,7 +60,7 @@ const SCENARIOS: Scenario[] = [
     title: "製薬会社でのクレーム対応",
     description: "医療機器の不具合に関するクレームを適切に処理し、信頼関係を回復するシナリオ",
     industry: "製薬",
-    difficulty: "上級",
+    difficulty: DifficultyLevel.ADVANCED,
     type: "クレーム対応",
     character: {
       name: "佐藤 美咲",
@@ -73,7 +75,7 @@ const SCENARIOS: Scenario[] = [
     title: "金融機関での価格交渉",
     description: "銀行向けセキュリティシステムの価格交渉を行うシナリオ",
     industry: "金融",
-    difficulty: "中級",
+    difficulty: DifficultyLevel.INTERMEDIATE,
     type: "価格交渉",
     character: {
       name: "山田 健太郎",
@@ -88,7 +90,7 @@ const SCENARIOS: Scenario[] = [
     title: "小売チェーンへの販売拡大提案",
     description: "既存顧客の小売チェーンに新商品ラインの導入を提案するシナリオ",
     industry: "小売",
-    difficulty: "初級",
+    difficulty: DifficultyLevel.BEGINNER,
     type: "既存フォロー",
     character: {
       name: "鈴木 亜希子",
@@ -103,7 +105,7 @@ const SCENARIOS: Scenario[] = [
     title: "大手商社での契約更新交渉",
     description: "長期パートナーシップ契約の更新交渉を行うシナリオ",
     industry: "商社",
-    difficulty: "上級",
+    difficulty: DifficultyLevel.ADVANCED,
     type: "契約更新",
     character: {
       name: "高橋 直樹",
@@ -118,7 +120,7 @@ const SCENARIOS: Scenario[] = [
     title: "教育機関でのデジタル化提案",
     description: "大学に対してデジタル化ソリューションを提案するシナリオ",
     industry: "教育",
-    difficulty: "中級",
+    difficulty: DifficultyLevel.INTERMEDIATE,
     type: "新規開拓",
     character: {
       name: "小林 智子",
@@ -132,6 +134,12 @@ const SCENARIOS: Scenario[] = [
 
 const INDUSTRIES = ["全て", "IT", "製造", "製薬", "金融", "小売", "商社", "教育"];
 const DIFFICULTIES = ["全て", "初級", "中級", "上級"];
+const DIFFICULTY_ENUM_MAP: Record<string, DifficultyLevel | null> = {
+  "全て": null,
+  "初級": DifficultyLevel.BEGINNER,
+  "中級": DifficultyLevel.INTERMEDIATE,
+  "上級": DifficultyLevel.ADVANCED,
+};
 const TYPES = ["全て", "新規開拓", "既存フォロー", "クレーム対応", "価格交渉", "契約更新"];
 
 export function ScenarioSelection({ onScenarioSelect }: ScenarioSelectionProps) {
@@ -140,18 +148,19 @@ export function ScenarioSelection({ onScenarioSelect }: ScenarioSelectionProps) 
   const [selectedType, setSelectedType] = useState("全て");
 
   const filteredScenarios = SCENARIOS.filter(scenario => {
+    const difficultyEnum = DIFFICULTY_ENUM_MAP[selectedDifficulty];
     return (
       (selectedIndustry === "全て" || scenario.industry === selectedIndustry) &&
-      (selectedDifficulty === "全て" || scenario.difficulty === selectedDifficulty) &&
+      (selectedDifficulty === "全て" || scenario.difficulty === difficultyEnum) &&
       (selectedType === "全て" || scenario.type === selectedType)
     );
   });
 
-  const getDifficultyColor = (difficulty: string) => {
+  const getDifficultyColor = (difficulty: DifficultyLevel) => {
     switch (difficulty) {
-      case "初級": return "bg-green-100 text-green-800";
-      case "中級": return "bg-yellow-100 text-yellow-800";
-      case "上級": return "bg-red-100 text-red-800";
+      case DifficultyLevel.BEGINNER: return "bg-green-100 text-green-800";
+      case DifficultyLevel.INTERMEDIATE: return "bg-yellow-100 text-yellow-800";
+      case DifficultyLevel.ADVANCED: return "bg-red-100 text-red-800";
       default: return "bg-gray-100 text-gray-800";
     }
   };
@@ -215,7 +224,7 @@ export function ScenarioSelection({ onScenarioSelect }: ScenarioSelectionProps) 
                   {scenario.title}
                 </h3>
                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${getDifficultyColor(scenario.difficulty)}`}>
-                  {scenario.difficulty}
+                  {convertDifficultyEnumToJapanese(scenario.difficulty)}
                 </span>
               </div>
 

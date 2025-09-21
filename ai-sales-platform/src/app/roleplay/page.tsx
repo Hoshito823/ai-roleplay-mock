@@ -6,13 +6,14 @@ import { ScenarioSelection } from "@/components/roleplay/ScenarioSelection";
 import { StaticVRMAvatar } from "@/components/roleplay/StaticVRMAvatar";
 import { Mic, MicOff, Camera, CameraOff, Pause, CheckCircle, Loader2 } from "lucide-react";
 import Papa from "papaparse";
+import { DifficultyLevel } from "@prisma/client";
 
 interface Scenario {
   id: string;
   title: string;
   description: string;
   industry: string;
-  difficulty: "初級" | "中級" | "上級";
+  difficulty: DifficultyLevel;
   type: string;
   character: {
     name: string;
