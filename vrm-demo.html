@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VRMデモページ</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #e3f2fd, #ffffff);
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* シナリオ選択 - 左上 */
+        #scenario-selector {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        #scenario-selector label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        #scenario-select {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+            background: white;
+        }
+
+        /* チャットログ - 中央下 */
+        #chat-area {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            width: 600px;
+            max-width: 90vw;
+        }
+
+        #chat-log {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-message {
+            margin: 10px 0;
+            padding: 8px 12px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+
+        .user-message {
+            background: #e3f2fd;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .ai-message {
+            background: #f5f5f5;
+            margin-right: auto;
+        }
+
+        #chat-button {
+            display: block;
+            margin: 0 auto;
+            padding: 12px 30px;
+            background: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        #chat-button:hover {
+            background: #1976d2;
+        }
+
+        /* 好感度スコア - 右下 */
+        #score-display {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            min-width: 120px;
+        }
+
+        #score-label {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        #score-value {
+            font-size: 24px;
+            color: #2196f3;
+            font-weight: bold;
+        }
+
+        /* ローディング表示 */
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+            color: #666;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+
+        <div id="loading">VRMモデルを読み込み中...</div>
+
+        <!-- シナリオ選択 -->
+        <div id="scenario-selector">
+            <label for="scenario-select">シナリオ選択</label>
+            <select id="scenario-select">
+                <option value="first-visit">顧客初回訪問</option>
+                <option value="complaint">カスハラ対応</option>
+            </select>
+        </div>
+
+        <!-- チャットエリア -->
+        <div id="chat-area">
+            <div id="chat-log"></div>
+            <button id="chat-button">会話開始</button>
+        </div>
+
+        <!-- 好感度スコア -->
+        <div id="score-display">
+            <div id="score-label">好感度スコア</div>
+            <div id="score-value">0</div>
+        </div>
+    </div>
+
+    <!-- Three.js and VRM libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@2.0.6/lib/three-vrm.min.js"></script>
+
+    <script>
+        class VRMDemo {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.vrm = null;
+                this.clock = new THREE.Clock();
+
+                this.currentExpression = 0;
+                this.expressions = ['neutral', 'happy', 'angry'];
+                this.expressionTimer = 0;
+
+                this.score = 0;
+                this.chatCount = 0;
+
+                this.scenarios = {
+                    'first-visit': {
+                        userMessages: ['こんにちは', 'サービスについて教えてください', 'ありがとうございました'],
+                        aiMessages: ['ようこそ！お待ちしておりました', '喜んでご説明いたします', 'またお越しください']
+                    },
+                    'complaint': {
+                        userMessages: ['対応が悪すぎる！', '責任者を出せ！', '二度と来ない！'],
+                        aiMessages: ['申し訳ございません', '上司に確認いたします', 'ご不便をおかけして申し訳ありませんでした']
+                    }
+                };
+
+                this.init();
+            }
+
+            async init() {
+                this.setupScene();
+                this.setupEventListeners();
+                await this.loadVRM();
+                this.animate();
+            }
+
+            setupScene() {
+                // Scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0xf0f8ff);
+
+                // Camera
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 1.5, 2);
+
+                // Renderer
+                const canvas = document.getElementById('canvas');
+                this.renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(1, 1, 1);
+                directionalLight.castShadow = true;
+                this.scene.add(directionalLight);
+
+                // Window resize
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+
+            async loadVRM() {
+                try {
+                    // VRMファイルが利用できない場合は、シンプルなキューブで代替
+                    this.createFallbackAvatar();
+                    document.getElementById('loading').style.display = 'none';
+                    console.log('Fallback avatar created successfully');
+                } catch (error) {
+                    console.error('Avatar creation failed:', error);
+                    document.getElementById('loading').textContent = 'アバターの作成に失敗しました';
+                }
+            }
+
+            createFallbackAvatar() {
+                // シンプルなアバター（頭、体、腕、足）を作成
+                const avatarGroup = new THREE.Group();
+
+                // 頭
+                const headGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+                const headMaterial = new THREE.MeshLambertMaterial({ color: 0xffdbac });
+                const head = new THREE.Mesh(headGeometry, headMaterial);
+                head.position.y = 1.7;
+                avatarGroup.add(head);
+
+                // 体
+                const bodyGeometry = new THREE.BoxGeometry(0.4, 0.6, 0.2);
+                const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x4a90e2 });
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                body.position.y = 1.2;
+                avatarGroup.add(body);
+
+                // 腕（左）
+                const armGeometry = new THREE.BoxGeometry(0.1, 0.5, 0.1);
+                const armMaterial = new THREE.MeshLambertMaterial({ color: 0xffdbac });
+                const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+                leftArm.position.set(-0.3, 1.2, 0);
+                avatarGroup.add(leftArm);
+
+                // 腕（右）
+                const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+                rightArm.position.set(0.3, 1.2, 0);
+                avatarGroup.add(rightArm);
+
+                // 足（左）
+                const legGeometry = new THREE.BoxGeometry(0.15, 0.6, 0.15);
+                const legMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+                const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+                leftLeg.position.set(-0.1, 0.6, 0);
+                avatarGroup.add(leftLeg);
+
+                // 足（右）
+                const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+                rightLeg.position.set(0.1, 0.6, 0);
+                avatarGroup.add(rightLeg);
+
+                // 目（左）
+                const eyeGeometry = new THREE.SphereGeometry(0.02, 8, 8);
+                const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
+                const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+                leftEye.position.set(-0.05, 1.72, 0.14);
+                avatarGroup.add(leftEye);
+
+                // 目（右）
+                const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+                rightEye.position.set(0.05, 1.72, 0.14);
+                avatarGroup.add(rightEye);
+
+                // 口
+                const mouthGeometry = new THREE.SphereGeometry(0.015, 6, 6);
+                const mouthMaterial = new THREE.MeshLambertMaterial({ color: 0xff6b6b });
+                this.mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
+                this.mouth.position.set(0, 1.65, 0.14);
+                avatarGroup.add(this.mouth);
+
+                // 表情用のスケール保存
+                this.originalMouthScale = this.mouth.scale.clone();
+                this.head = head;
+
+                this.scene.add(avatarGroup);
+                this.avatarGroup = avatarGroup;
+            }
+
+            updateExpression() {
+                if (!this.mouth || !this.head) return;
+
+                const deltaTime = this.clock.getDelta();
+                this.expressionTimer += deltaTime;
+
+                // 5秒ごとに表情を切り替え
+                if (this.expressionTimer >= 5.0) {
+                    this.expressionTimer = 0;
+                    this.currentExpression = (this.currentExpression + 1) % this.expressions.length;
+
+                    const expressionName = this.expressions[this.currentExpression];
+
+                    // 表情に応じて口と頭の色を変更
+                    switch (expressionName) {
+                        case 'neutral':
+                            this.mouth.material.color.setHex(0xff6b6b);
+                            this.mouth.scale.copy(this.originalMouthScale);
+                            this.head.material.color.setHex(0xffdbac);
+                            break;
+                        case 'happy':
+                            this.mouth.material.color.setHex(0x4ecdc4);
+                            this.mouth.scale.set(1.5, 0.5, 1.0);
+                            this.head.material.color.setHex(0xfff3e0);
+                            break;
+                        case 'angry':
+                            this.mouth.material.color.setHex(0xff4757);
+                            this.mouth.scale.set(0.5, 1.5, 1.0);
+                            this.head.material.color.setHex(0xffcdd2);
+                            break;
+                    }
+
+                    console.log(`Expression changed to: ${expressionName}`);
+                }
+            }
+
+            setupEventListeners() {
+                // チャットボタン
+                document.getElementById('chat-button').addEventListener('click', () => {
+                    this.handleChatInteraction();
+                });
+
+                // シナリオ変更
+                document.getElementById('scenario-select').addEventListener('change', (e) => {
+                    console.log(`Scenario changed to: ${e.target.value}`);
+                    this.chatCount = 0; // チャットカウントをリセット
+                });
+            }
+
+            handleChatInteraction() {
+                const scenario = document.getElementById('scenario-select').value;
+                const chatLog = document.getElementById('chat-log');
+                const currentScenario = this.scenarios[scenario];
+
+                if (this.chatCount < currentScenario.userMessages.length) {
+                    // ユーザーメッセージを追加
+                    const userMessage = document.createElement('div');
+                    userMessage.className = 'chat-message user-message';
+                    userMessage.textContent = currentScenario.userMessages[this.chatCount];
+                    chatLog.appendChild(userMessage);
+
+                    // AIメッセージを追加（少し遅延）
+                    setTimeout(() => {
+                        const aiMessage = document.createElement('div');
+                        aiMessage.className = 'chat-message ai-message';
+                        aiMessage.textContent = currentScenario.aiMessages[this.chatCount];
+                        chatLog.appendChild(aiMessage);
+
+                        // スクロールを最下部に
+                        chatLog.scrollTop = chatLog.scrollHeight;
+
+                        // 好感度スコアを更新
+                        this.updateScore();
+                    }, 1000);
+
+                    this.chatCount++;
+
+                    // 最後のメッセージの場合、ボタンテキストを変更
+                    if (this.chatCount >= currentScenario.userMessages.length) {
+                        document.getElementById('chat-button').textContent = 'リセット';
+                    }
+                } else {
+                    // リセット
+                    chatLog.innerHTML = '';
+                    this.chatCount = 0;
+                    document.getElementById('chat-button').textContent = '会話開始';
+                }
+            }
+
+            updateScore() {
+                this.score += 3;
+                document.getElementById('score-value').textContent = this.score;
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                this.updateExpression();
+
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // アプリケーション開始
+        window.addEventListener('DOMContentLoaded', () => {
+            new VRMDemo();
+        });
+    </script>
+</body>
+</html>

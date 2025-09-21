@@ -1,0 +1,138 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  image     String?
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions Session[]
+  analytics Analytics[]
+
+  @@map("users")
+}
+
+model Scenario {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  industry    String
+  difficulty  DifficultyLevel
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  sessions Session[]
+
+  @@map("scenarios")
+}
+
+model Session {
+  id         String        @id @default(cuid())
+  userId     String
+  scenarioId String
+  status     SessionStatus @default(ACTIVE)
+  startedAt  DateTime      @default(now())
+  endedAt    DateTime?
+  duration   Int?          // in seconds
+  score      Float?        // 0.0 to 100.0
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenario  Scenario  @relation(fields: [scenarioId], references: [id])
+  messages  Message[]
+  emotions  EmotionAnalysis[]
+  analytics Analytics?
+
+  @@map("sessions")
+}
+
+model Message {
+  id        String      @id @default(cuid())
+  sessionId String
+  content   String
+  sender    MessageSender
+  timestamp DateTime    @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model EmotionAnalysis {
+  id         String   @id @default(cuid())
+  sessionId  String
+  messageId  String?
+  timestamp  DateTime @default(now())
+  joy        Float    @default(0.0)
+  sadness    Float    @default(0.0)
+  anger      Float    @default(0.0)
+  fear       Float    @default(0.0)
+  surprise   Float    @default(0.0)
+  disgust    Float    @default(0.0)
+  confidence Float    @default(0.0)
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("emotion_analysis")
+}
+
+model Analytics {
+  id                    String   @id @default(cuid())
+  sessionId             String   @unique
+  userId                String
+  totalMessages         Int      @default(0)
+  userMessages          Int      @default(0)
+  aiMessages            Int      @default(0)
+  averageResponseTime   Float?   // in seconds
+  keywordsUsed          String[] // Array of keywords
+  sentimentTrend        String?  // JSON string of sentiment over time
+  improvementSuggestions String? // AI-generated suggestions
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("analytics")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum DifficultyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum SessionStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+  CANCELLED
+}
+
+enum MessageSender {
+  USER
+  AI
+}
