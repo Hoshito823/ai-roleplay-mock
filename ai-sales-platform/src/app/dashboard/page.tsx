@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { BarChart3, Users, Target, TrendingUp, Play, Clock, Award, Settings } from "lucide-react";
+import { BarChart3, Users, Target, TrendingUp, Play, Clock, Award, Settings, Brain, Heart, Shield, Zap } from "lucide-react";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -11,6 +11,13 @@ export default function DashboardPage() {
     avgScore: 87,
     completionRate: 92,
     improvementTrend: "+15%"
+  };
+
+  const emotionStats = {
+    avgEmotionStability: 82,
+    customerTrustGrowth: "+28%",
+    positiveSignals: 156,
+    negativeDetections: 12
   };
 
   const recentSessions = [
@@ -183,6 +190,88 @@ export default function DashboardPage() {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">成績推移</h3>
               <div className="h-32 bg-gray-100 rounded-lg flex items-center justify-center">
                 <p className="text-gray-500 text-sm">チャート（準備中）</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Emotion Analysis Section */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">感情解析ダッシュボード</h2>
+
+          {/* Emotion Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div className="bg-white p-6 rounded-lg shadow-sm border">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">平均感情安定度</p>
+                  <p className="text-2xl font-bold text-blue-600">{emotionStats.avgEmotionStability}%</p>
+                </div>
+                <div className="p-3 bg-blue-100 rounded-full">
+                  <Shield className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-sm border">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">顧客信頼度向上</p>
+                  <p className="text-2xl font-bold text-green-600">{emotionStats.customerTrustGrowth}</p>
+                </div>
+                <div className="p-3 bg-green-100 rounded-full">
+                  <Heart className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-sm border">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">ポジティブシグナル</p>
+                  <p className="text-2xl font-bold text-orange-600">{emotionStats.positiveSignals}</p>
+                </div>
+                <div className="p-3 bg-orange-100 rounded-full">
+                  <Zap className="w-6 h-6 text-orange-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-sm border">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">ネガティブ検出</p>
+                  <p className="text-2xl font-bold text-red-600">{emotionStats.negativeDetections}</p>
+                </div>
+                <div className="p-3 bg-red-100 rounded-full">
+                  <Brain className="w-6 h-6 text-red-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* AI Insights */}
+          <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <Brain className="w-5 h-5 text-indigo-600" />
+              <h3 className="text-lg font-semibold text-indigo-900">AI感情解析インサイト</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-medium text-indigo-800 mb-2">今週のハイライト</h4>
+                <ul className="text-sm text-indigo-700 space-y-1">
+                  <li>• 顧客との信頼関係構築が前週比28%向上</li>
+                  <li>• ポジティブシグナル検出率が15%アップ</li>
+                  <li>• 営業中のストレスレベルが平均12%減少</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-medium text-indigo-800 mb-2">改善提案</h4>
+                <ul className="text-sm text-indigo-700 space-y-1">
+                  <li>• 初回コンタクトでの共感表現を強化</li>
+                  <li>• 価格提示タイミングの最適化を検討</li>
+                  <li>• クロージング前の感情状態確認を習慣化</li>
+                </ul>
               </div>
             </div>
           </div>

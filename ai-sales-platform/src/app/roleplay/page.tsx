@@ -131,8 +131,8 @@ export default function RoleplayPage() {
   };
 
   const handleSessionComplete = () => {
-    // Navigate to result page
-    router.push('/roleplay-result');
+    // Navigate to emotion analysis result page
+    router.push('/roleplay-result-emotion');
   };
 
   // Enterキーが押されたときの処理
